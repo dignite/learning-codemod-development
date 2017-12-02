@@ -1,3 +1,5 @@
+import { describe as describeNode } from 'jscodeshift-helper'
+
 export default function importSpecifierTransform (file, api, options) {
   const { jscodeshift } = api
   const parse = jscodeshift
@@ -7,6 +9,9 @@ export default function importSpecifierTransform (file, api, options) {
   const root = parse(source)
 
   try {
+    checkForVariableNameCollisions(root, jscodeshift)
+    checkIfTargetForTransform(root, jscodeshift)
+
     getModuleExportsAssignmentsWithIffe(root, jscodeshift)
       .forEach((path) => {
         const body = getImmediatelyInvokingFunctionExceptReturnStatement(path.value.right, jscodeshift)
@@ -21,11 +26,29 @@ export default function importSpecifierTransform (file, api, options) {
         return newAssign
       })
   } catch (e) {
-    console.warn(e)
     return // Opt out of transform
   }
 
   return root.toSource(options.printOptions)
+}
+
+function checkForVariableNameCollisions (root, jscodeshift) {
+  const allVariableNames = root.findVariableDeclarators()
+    .nodes()
+    .map((node) => node.id.name)  
+  const countByName = count(allVariableNames)
+  const duplicates = Object.keys(countByName).filter((variableName) => countByName[variableName] > 1)
+
+  if (duplicates.length) {
+    throw new Error(`Found duplicate variable names: ${JSON.stringify(duplicates)}`)
+  }
+}
+
+function checkIfTargetForTransform (root, jscodeshift) {
+  const targetsForTransform = getModuleExportsAssignmentsWithIffe(root, jscodeshift)
+  if (!targetsForTransform.length) {
+    throw new Error('No matches for transform')
+  }
 }
 
 function getModuleExportsAssignmentsWithIffe (root, jscodeshift) {
@@ -70,4 +93,8 @@ function getImmediatelyInvokingFunctionExceptReturnStatement (iffe, jscodeshift)
       return !parse(path).isOfType(ReturnStatement)
     })
   return functionBodySansReturn
+}
+
+function count (variableNames) {
+  return variableNames.reduce((a, b) => Object.assign(a, {[b]: (a[b] || 0) + 1}), {})
 }
