@@ -5,6 +5,3 @@ function innerFunction () {
 }
 
 module.exports = { a, b, innerFunction }
-
-module.exports = function () { console.log('Do not touch this') }
-module.exports = 'Do not touch this'
