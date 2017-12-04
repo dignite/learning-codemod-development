@@ -1,4 +1,4 @@
-import { describe as describeNode } from 'jscodeshift-helper'
+import { describe as describeNode } from 'jscodeshift-helper' //eslint-disable-line
 
 export default function importSpecifierTransform (file, api, options) {
   const { jscodeshift } = api
@@ -35,7 +35,7 @@ export default function importSpecifierTransform (file, api, options) {
 function checkForVariableNameCollisions (root, jscodeshift) {
   const allVariableNames = root.findVariableDeclarators()
     .nodes()
-    .map((node) => node.id.name)  
+    .map((node) => node.id.name)
   const countByName = count(allVariableNames)
   const duplicates = Object.keys(countByName).filter((variableName) => countByName[variableName] > 1)
 
