@@ -33,14 +33,19 @@ export default function importSpecifierTransform (file, api, options) {
 }
 
 function checkForVariableNameCollisions (root, jscodeshift) {
-  const allVariableNames = root.findVariableDeclarators()
+  const { VariableDeclarator } = jscodeshift
+  const allVariables = root.find(VariableDeclarator)
+  const topLevelVariables = allVariables
+    .filter(path => isAtModuleScope(path, jscodeshift))
     .nodes()
     .map((node) => node.id.name)
-  const countByName = count(allVariableNames)
-  const duplicates = Object.keys(countByName).filter((variableName) => countByName[variableName] > 1)
-
-  if (duplicates.length) {
-    throw new Error(`Found duplicate variable names: ${JSON.stringify(duplicates)}`)
+  const nonTopLevelVariables = allVariables
+    .filter(path => !isAtModuleScope(path, jscodeshift))
+    .nodes()
+    .map((node) => node.id.name)
+  const intersection = topLevelVariables.filter((name) => nonTopLevelVariables.includes(name))
+  if (intersection.length) {
+    throw new Error(`Found duplicate variable names: ${JSON.stringify(intersection)}`)
   }
 }
 
@@ -95,6 +100,8 @@ function getImmediatelyInvokingFunctionExceptReturnStatement (iffe, jscodeshift)
   return functionBodySansReturn
 }
 
-function count (variableNames) {
-  return variableNames.reduce((a, b) => Object.assign(a, {[b]: (a[b] || 0) + 1}), {})
+function isAtModuleScope (path, jscodeshift) {
+  const parse = jscodeshift
+  const { Program } = jscodeshift
+  return parse(path.parent.parent.value).isOfType(Program)
 }
